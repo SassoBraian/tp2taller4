@@ -64,10 +64,8 @@ let expectativaE8 = {
 // --- VARIABLES ESPECÍFICAS DEL EVENTO 9 (ANSIEDAD) ---
 let ansiedadE9 = {
   estado: 'ANSIEDAD',
-  x: 0, y: 0,
-  velX: 8, velY: -8,
-  tam: 30,
-  estela: [],
+  tam: 42, // Tamaño aumentado
+  circulos: [],
   frameRelativo: 0
 };
 
@@ -190,11 +188,26 @@ function setup() {
   expectativaE8.x = anchoCelda + anchoCelda / 2;
   expectativaE8.y = (altoCelda * 2) + altoCelda / 2;
 
-  // Inicializar EVENTO 9
-  ansiedadE9.x = (anchoCelda * 2) + anchoCelda / 2;
-  ansiedadE9.y = (altoCelda * 2) + altoCelda / 2;
-  ansiedadE9.velX = 8;  
-  ansiedadE9.velY = -8; 
+  // Inicializar EVENTO 9 (Ansiedad: 4 círculos que parten del centro)
+  ansiedadE9.circulos = [];
+  let centroX9 = (anchoCelda * 2) + anchoCelda / 2;
+  let centroY9 = (altoCelda * 2) + altoCelda / 2;
+
+  let velocidadesE9 = [
+    { vx: 10, vy: -9 },
+    { vx: -11, vy: 8 },
+    { vx: 9, vy: 11 },
+    { vx: -10, vy: -10 }
+  ];
+
+  for (let i = 0; i < 4; i++) {
+    ansiedadE9.circulos.push({
+      x: centroX9,
+      y: centroY9,
+      velX: velocidadesE9[i].vx,
+      velY: velocidadesE9[i].vy
+    });
+  }
 }
 
 function mouseEnCuadrante(col, fil) {
@@ -759,35 +772,46 @@ function ejecutarEvento9() {
   let xMin = anchoCelda * 2; let xMax = width; let yMin = altoCelda * 2; let yMax = height;
   let activo = mouseEnCuadrante(2, 2);
 
+  let centroX = xMin + anchoCelda / 2;
+  let centroY = yMin + altoCelda / 2;
+
   if (activo) {
     ansiedadE9.frameRelativo++;
-    if (ansiedadE9.estado === 'ANSIEDAD') {
-      ansiedadE9.estela.push({ x: ansiedadE9.x, y: ansiedadE9.y });
-      if (ansiedadE9.estela.length > 12) ansiedadE9.estela.shift();
+    
+    for (let c of ansiedadE9.circulos) {
+      if (ansiedadE9.estado === 'ANSIEDAD') {
+        c.x += c.velX; 
+        c.y += c.velY;
 
-      ansiedadE9.x += ansiedadE9.velX; ansiedadE9.y += ansiedadE9.velY;
-      let r = ansiedadE9.tam / 2;
-      if (ansiedadE9.x - r < xMin || ansiedadE9.x + r > xMax) ansiedadE9.velX *= -1;
-      if (ansiedadE9.y - r < yMin || ansiedadE9.y + r > yMax) ansiedadE9.velY *= -1;
-    } else if (ansiedadE9.estado === 'CALMA') {
-      if (ansiedadE9.estela.length > 0) ansiedadE9.estela.pop();
-      ansiedadE9.x = lerp(ansiedadE9.x, xMin + anchoCelda / 2, 0.1);
-      ansiedadE9.y = lerp(ansiedadE9.y, yMin + altoCelda / 2, 0.1);
+        // Rebotes rápidos contra las paredes del cuadrante
+        let r = ansiedadE9.tam / 2;
+        if (c.x - r < xMin || c.x + r > xMax) c.velX *= -1;
+        if (c.y - r < yMin || c.y + r > yMax) c.velY *= -1;
+
+      } else if (ansiedadE9.estado === 'CALMA') {
+        // Todos convergen suavemente hacia el centro
+        c.x = lerp(c.x, centroX, 0.08);
+        c.y = lerp(c.y, centroY, 0.08);
+      }
     }
   }
 
+  // Dibujado de los 4 círculos según el estado
   if (ansiedadE9.estado === 'ANSIEDAD') {
-    for (let i = 0; i < ansiedadE9.estela.length; i++) {
-      let pos = ansiedadE9.estela[i];
-      stroke(255, 50, 50, map(i, 0, ansiedadE9.estela.length, 10, 140)); strokeWeight(1.5); noFill();
-      ellipse(pos.x, pos.y, ansiedadE9.tam * 0.8, ansiedadE9.tam * 0.8);
+    stroke(255, 50, 50); 
+    strokeWeight(2.5); 
+    noFill();
+    for (let c of ansiedadE9.circulos) {
+      ellipse(c.x, c.y, ansiedadE9.tam, ansiedadE9.tam);
     }
-    stroke(255, 50, 50); strokeWeight(3); noFill();
-    ellipse(ansiedadE9.x, ansiedadE9.y, ansiedadE9.tam, ansiedadE9.tam);
   } else if (ansiedadE9.estado === 'CALMA') {
-    let diametroLatido = 45 + (sin(ansiedadE9.frameRelativo / 15) * 10);
-    stroke(255, 135, 50); strokeWeight(3); noFill();
-    ellipse(ansiedadE9.x, ansiedadE9.y, diametroLatido, diametroLatido);
+    let diametroLatido = (ansiedadE9.tam + 15) + (sin(ansiedadE9.frameRelativo / 15) * 12);
+    stroke(255, 135, 50); 
+    strokeWeight(3); 
+    noFill();
+    for (let c of ansiedadE9.circulos) {
+      ellipse(c.x, c.y, diametroLatido, diametroLatido);
+    }
   }
 }
 
@@ -817,8 +841,10 @@ function mouseReleased() {
 
   if (ansiedadE9.estado === 'CALMA') {
     ansiedadE9.estado = 'ANSIEDAD';
-    ansiedadE9.velX = random([-10, -7, 7, 10]);
-    ansiedadE9.velY = random([-10, -7, 7, 10]);
+    for (let c of ansiedadE9.circulos) {
+      c.velX = random([-12, -9, 9, 12]);
+      c.velY = random([-12, -9, 9, 12]);
+    }
   }
   for (let f of coexistenciaE6.figuras) f.arrastrando = false;
   for (let m of matricesE1) m.arrastrando = false;
